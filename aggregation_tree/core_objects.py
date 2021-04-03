@@ -10,8 +10,10 @@ class TreeNode:
         self._value = value
         self.children = []
 
-    def add_child(self, child_id):
-        self.children.append(TreeNode(child_id, self))
+    def add_child(self, child_id, aggregation_function=None, value=None):
+        new_node = TreeNode(child_id, aggregation_function, value, self)
+        self.children.append(new_node)
+        return new_node
 
     @property
     def value(self):
