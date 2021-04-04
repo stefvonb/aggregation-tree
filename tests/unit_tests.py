@@ -1,8 +1,8 @@
 import unittest
-from aggregation_tree.core_objects import CalculatedTreeNode
+from aggregation_tree.core_objects import CalculatedTreeNode, FreeParameterTreeNode
 
 
-class TestAggregationTree(unittest.TestCase):
+class TestTreeNodes(unittest.TestCase):
     def test_simple_addition(self):
         top_node = CalculatedTreeNode("result", lambda x: sum(x))
         top_node.add_child("child_1", value=2)
@@ -41,6 +41,19 @@ class TestAggregationTree(unittest.TestCase):
 
         # Answer should be 25 + 2*3*7 = 67
         self.assertEqual(final_result.value, 67)
+
+    def test_adding_function_for_free_parameter_fails(self):
+        main_node = CalculatedTreeNode("result", lambda x: sum(x))
+        self.assertRaises(ValueError, lambda: main_node.add_child("child", lambda x: sum(x), 5.0))
+
+    def test_adding_free_and_calculated_nodes(self):
+        main_node = CalculatedTreeNode("result", lambda x: sum(x))
+        main_node.add_child("free_param", value=20)
+        sub_node = main_node.add_child("calculated_node", lambda x: max(x))
+        sub_node.add_child("lowest_param", value=2)
+        sub_node.add_child("lowest_param_2", value=5)
+
+        self.assertEqual(main_node.value, 25)
 
 
 if __name__ == '__main__':
