@@ -1,5 +1,5 @@
 import unittest
-from aggregation_tree.core_objects import CalculatedTreeNode, FreeParameterTreeNode
+from aggregation_tree.core_objects import CalculatedTreeNode, FreeParameterTreeNode, SharedVariableTreeSpace
 
 
 class TestTreeNodes(unittest.TestCase):
@@ -54,6 +54,18 @@ class TestTreeNodes(unittest.TestCase):
         sub_node.add_child("lowest_param_2", value=5)
 
         self.assertEqual(main_node.value, 25)
+
+
+class TestSharedVariableTreeSpace(unittest.TestCase):
+    def test_adding_node_populates_storage(self):
+        tree_space = SharedVariableTreeSpace()
+
+        node = tree_space.add_seed_node("results", lambda x: sum(x))
+
+        print(tree_space.variable_store)
+
+        self.assertTrue(node.identifier in tree_space.variable_store)
+        self.assertEqual(None, tree_space.get_variable(node.identifier))
 
 
 if __name__ == '__main__':

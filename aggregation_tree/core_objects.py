@@ -36,6 +36,10 @@ class FreeParameterTreeNode(TreeNode):
         super().__init__(name, parent, shared_variable_tree_space)
         self._value = value
 
+        if self.shared_variable_tree_space is not None:
+            # Free parameters should have a value, so we update the shared variable store here
+            self.shared_variable_tree_space.update_variable(self.identifier, self._value)
+
     @property
     def value(self):
         return self._value
@@ -68,7 +72,7 @@ class SharedVariableTreeSpace:
         self.variable_store = {}
 
     def add_seed_node(self, name, aggregation_function):
-        new_node = CalculatedTreeNode(name, aggregation_function)
+        new_node = CalculatedTreeNode(name, aggregation_function, shared_variable_tree_space=self)
         self.tree_seeds[name] = new_node
         return new_node
 
