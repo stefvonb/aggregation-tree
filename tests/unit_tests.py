@@ -1,10 +1,10 @@
 import unittest
-from aggregation_tree.core_objects import TreeNode
+from aggregation_tree.core_objects import CalculatedTreeNode
 
 
 class TestAggregationTree(unittest.TestCase):
     def test_simple_addition(self):
-        top_node = TreeNode("result", lambda x: sum(x))
+        top_node = CalculatedTreeNode("result", lambda x: sum(x))
         top_node.add_child("child_1", value=2)
         top_node.add_child("child_2", value=3)
 
@@ -18,7 +18,7 @@ class TestAggregationTree(unittest.TestCase):
         return result
 
     def test_simple_multiplication(self):
-        top_node = TreeNode("result", self.multiply_list)
+        top_node = CalculatedTreeNode("result", self.multiply_list)
 
         top_node.add_child("child_1", value=10)
         top_node.add_child("child_2", value=20)
@@ -27,7 +27,7 @@ class TestAggregationTree(unittest.TestCase):
         self.assertEqual(top_node.value, 40)
 
     def test_three_layers(self):
-        final_result = TreeNode("result", lambda x: sum(x))
+        final_result = CalculatedTreeNode("result", lambda x: sum(x))
 
         second_layer_node_1 = final_result.add_child("sub_result_1", self.multiply_list)
         second_layer_node_2 = final_result.add_child("sub_result_2", lambda x: max(x))
