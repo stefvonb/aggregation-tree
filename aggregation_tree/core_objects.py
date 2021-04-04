@@ -80,11 +80,12 @@ class SharedVariable:
 
 
 class SharedVariableTreeSpace:
-    __slots__ = ['tree_seeds', 'shared_variable_store']
+    __slots__ = ['tree_seeds', 'shared_variable_store', 'linked_nodes']
 
     def __init__(self):
         self.tree_seeds = {}
         self.shared_variable_store = {}
+        self.linked_nodes = {}
 
     def add_seed_node(self, name, aggregation_function):
         new_node = CalculatedTreeNode(name, aggregation_function, shared_variable_tree_space=self)
@@ -95,6 +96,7 @@ class SharedVariableTreeSpace:
         if key in self.shared_variable_store:
             raise KeyError(f"Key '{key}' already exists in the variable store.")
         self.shared_variable_store[key] = SharedVariable(value)
+        self.linked_nodes[key] = []
 
     def update_variable(self, key, value):
         if key not in self.shared_variable_store:
