@@ -28,7 +28,7 @@ class TreeNode:
 
     @property
     def identifier(self):
-        return f"node_value_{self.name}_{id(self)}"
+        return f"node_value_{self.name}_{hex(id(self))}"
 
 
 class FreeParameterTreeNode(TreeNode):
@@ -42,6 +42,8 @@ class FreeParameterTreeNode(TreeNode):
 
     @property
     def value(self):
+        if isinstance(self._value, SharedVariable):
+            return self._value.underlying_value
         return self._value
 
     @value.setter
@@ -64,6 +66,19 @@ class CalculatedTreeNode(TreeNode):
         return [child.value for child in self.children]
 
 
+class SharedVariable:
+    """
+    Since we can't refer to primitive types by reference, we wrap them here as shared variables.
+    """
+    __slots__ = ['underlying_value']
+
+    def __init__(self, value):
+        self.underlying_value = value
+
+    def __repr__(self):
+        return f"{self.underlying_value} <{hex(id(self))}>"
+
+
 class SharedVariableTreeSpace:
     __slots__ = ['tree_seeds', 'variable_store']
 
@@ -79,12 +94,12 @@ class SharedVariableTreeSpace:
     def add_variable(self, key, value):
         if key in self.variable_store:
             raise KeyError(f"Key '{key}' already exists in the variable store.")
-        self.variable_store[key] = value
+        self.variable_store[key] = SharedVariable(value)
 
     def update_variable(self, key, value):
         if key not in self.variable_store:
             raise KeyError(f"Key '{key}' does not exist in the variable store.")
-        self.variable_store[key] = value
+        self.variable_store[key].underlying_value = value
 
     def get_variable(self, key):
         if key not in self.variable_store:

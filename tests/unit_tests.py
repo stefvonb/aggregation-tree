@@ -62,10 +62,25 @@ class TestSharedVariableTreeSpace(unittest.TestCase):
 
         node = tree_space.add_seed_node("results", lambda x: sum(x))
 
-        print(tree_space.variable_store)
-
         self.assertTrue(node.identifier in tree_space.variable_store)
-        self.assertEqual(None, tree_space.get_variable(node.identifier))
+        self.assertEqual(None, tree_space.get_variable(node.identifier).underlying_value)
+
+    def test_can_use_shared_variables_for_free_parameters(self):
+        tree_space = SharedVariableTreeSpace()
+
+        tree_space.add_variable("x", 20.0)
+        tree_space.add_variable("y", 25.0)
+
+        top_node = tree_space.add_seed_node("x+y", lambda x: sum(x))
+
+        top_node.add_child("x_node", value=tree_space.get_variable("x"))
+        top_node.add_child("y_node", value=tree_space.get_variable("y"))
+
+        self.assertEqual(top_node.value, 45.0)
+
+        tree_space.update_variable("x", 15.0)
+
+        self.assertEqual(top_node.value, 40.0)
 
 
 if __name__ == '__main__':
