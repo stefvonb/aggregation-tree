@@ -11,6 +11,9 @@ class TreeNode:
         # When we add nodes in a SharedVariableTreeSpace, then they need a reference to that space's variables
         self.shared_variable_tree_space = shared_variable_tree_space
 
+        if self.shared_variable_tree_space is not None:
+            self.shared_variable_tree_space.add_variable(self.identifier, None)
+
     def add_child(self, child_name, aggregation_function=None, value=None):
         if (aggregation_function is None and value is None) or (aggregation_function is not None and value is not None):
             raise ValueError("When adding a child node, either specify a value or an aggregation function. Adding a "
@@ -62,8 +65,24 @@ class SharedVariableTreeSpace:
 
     def __init__(self):
         self.tree_seeds = {}
+        self.variable_store = {}
 
     def add_seed_node(self, name, aggregation_function):
         new_node = CalculatedTreeNode(name, aggregation_function)
         self.tree_seeds[name] = new_node
         return new_node
+
+    def add_variable(self, key, value):
+        if key in self.variable_store:
+            raise KeyError(f"Key '{key}' already exists in the variable store.")
+        self.variable_store[key] = value
+
+    def update_variable(self, key, value):
+        if key not in self.variable_store:
+            raise KeyError(f"Key '{key}' does not exist in the variable store.")
+        self.variable_store[key] = value
+
+    def get_variable(self, key):
+        if key not in self.variable_store:
+            raise KeyError(f"Key '{key}' does not exist in the variable store.")
+        return self.variable_store[key]
