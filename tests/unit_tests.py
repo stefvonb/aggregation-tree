@@ -1,6 +1,18 @@
-import unittest
-from aggregation_tree.trees import CalculatedTreeNode, FreeParameterTreeNode, SharedVariableTreeSpace, \
+import unittest, time
+from aggregation_tree.trees import CalculatedTreeNode, SharedVariableTreeSpace, \
     SmartTreeSpace
+
+
+def multiply_list(input_list):
+    result = 1
+    for element in input_list:
+        result *= element
+    return result
+
+
+def half_second_add(input_list):
+    time.sleep(0.5)
+    return sum(input_list)
 
 
 class TestTreeNodes(unittest.TestCase):
@@ -11,15 +23,8 @@ class TestTreeNodes(unittest.TestCase):
 
         self.assertEqual(top_node.value, 5)
 
-    @staticmethod
-    def multiply_list(input_list):
-        result = 1
-        for element in input_list:
-            result *= element
-        return result
-
     def test_simple_multiplication(self):
-        top_node = CalculatedTreeNode("result", self.multiply_list)
+        top_node = CalculatedTreeNode("result", multiply_list)
 
         top_node.add_child("child_1", value=10)
         top_node.add_child("child_2", value=20)
@@ -30,7 +35,7 @@ class TestTreeNodes(unittest.TestCase):
     def test_three_layers(self):
         final_result = CalculatedTreeNode("result", lambda x: sum(x))
 
-        second_layer_node_1 = final_result.add_child("sub_result_1", self.multiply_list)
+        second_layer_node_1 = final_result.add_child("sub_result_1", multiply_list)
         second_layer_node_2 = final_result.add_child("sub_result_2", lambda x: max(x))
 
         second_layer_node_1.add_child("multiply_1", value=2)
@@ -106,6 +111,31 @@ class TestSmartTreeSpace(unittest.TestCase):
 
         tree_space.update_variable("x", 120)
         self.assertEqual(seed.value, 260)
+
+    def test_smart_tree_space_saves_time(self):
+        tree_space = SmartTreeSpace()
+
+        top_node = tree_space.add_seed_node("result", lambda x: sum(x))
+        slow_node_1 = top_node.add_child("slow_node_1", half_second_add)
+        slow_node_2 = top_node.add_child("slow_node_2", half_second_add)
+
+        tree_space.add_variable("x", 10)
+        tree_space.add_variable("y", 20)
+
+        slow_node_1.add_child("x_node", value=tree_space.get_variable("x"))
+        slow_node_2.add_child("y_node", value=tree_space.get_variable("y"))
+
+        t0 = time.time()
+        first_value = top_node.value
+        self.assertTrue(time.time() - t0 > 1)
+        self.assertEqual(first_value, 30)
+
+        # Change just one variable
+        tree_space.update_variable("x", 20)
+        t0 = time.time()
+        second_value = top_node.value
+        self.assertTrue(0.5 < time.time() - t0 < 1)
+        self.assertEqual(second_value, 40)
 
 
 if __name__ == '__main__':
