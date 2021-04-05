@@ -125,16 +125,16 @@ class TestSmartTreeSpace(unittest.TestCase):
         slow_node_1.add_child("x_node", value=tree_space.get_variable("x"))
         slow_node_2.add_child("y_node", value=tree_space.get_variable("y"))
 
-        t0 = time.time()
+        t0 = time.perf_counter()
         first_value = top_node.value
-        self.assertTrue(time.time() - t0 > 1)
+        self.assertTrue(time.perf_counter() - t0 > 1)
         self.assertEqual(first_value, 30)
 
         # Change just one variable
         tree_space.update_variable("x", 20)
-        t0 = time.time()
+        t0 = time.perf_counter()
         second_value = top_node.value
-        self.assertTrue(0.5 < time.time() - t0 < 1)
+        self.assertTrue(0.5 < time.perf_counter() - t0 < 1)
         self.assertEqual(second_value, 40)
 
 
@@ -152,10 +152,10 @@ class TestThreadedSmartTreeSpace(unittest.TestCase):
         slow_node_1.add_child("a_node", value=tree_space.get_variable("a"))
         slow_node_2.add_child("b_node", value=tree_space.get_variable("b"))
 
-        t0 = time.time()
+        t0 = time.perf_counter()
         first_value = top_node.value
-        print(time.time() - t0)
-        self.assertTrue(0.5 < time.time() - t0 < 1)
+        tree_space.execute_threads()
+        self.assertTrue(0.5 < time.perf_counter() - t0 < 1)
         self.assertEqual(first_value, 50)
 
 

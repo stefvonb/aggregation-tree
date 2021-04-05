@@ -73,8 +73,9 @@ class CalculatedTreeNode(TreeNode):
         # If it doesn't live in a SmartTreeSpace, we calculate it anyway
         if not isinstance(self.tree_space, SmartTreeSpace) or self.stored_value is None:
             if self.is_threaded:
-                self.stored_value = self.tree_space.thread_pool_executor.submit(self.aggregation_function,
-                                                                                self.get_children_values())
+                future_value = self.tree_space.thread_pool_executor.submit(self.aggregation_function,
+                                                                           self.get_children_values())
+                self.tree_space.futures.append(future_value)
             else:
                 self.stored_value = self.aggregation_function(self.get_children_values())
 
@@ -166,9 +167,14 @@ class SmartTreeSpace(SharedVariableTreeSpace):
 
 
 class ThreadedSmartTreeSpace(SmartTreeSpace):
-    __slots__ = ['thread_pool_executor']
+    __slots__ = ['thread_pool_executor', 'futures']
 
     def __init__(self, max_workers=None):
         super().__init__()
 
         self.thread_pool_executor = ThreadPoolExecutor(max_workers)
+        self.futures = []
+
+    def execute_threads(self):
+        for i in range(len(self.futures) - 1, -1, -1):
+            self.futures[i].result()
