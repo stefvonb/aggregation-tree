@@ -73,6 +73,13 @@ class CalculatedTreeNode(TreeNode):
     def get_children_values(self):
         return [child.value for child in self.children]
 
+    def mark_to_recalculate(self):
+        current_node = self
+
+        while current_node is not None and current_node.stored_value is not None:
+            current_node.stored_value = None
+            current_node = current_node.parent
+
 
 class SharedVariable:
     """
@@ -111,6 +118,10 @@ class SharedVariableTreeSpace:
         if key not in self.shared_variable_store:
             raise KeyError(f"Key '{key}' does not exist in the variable store.")
         self.shared_variable_store[key].underlying_value = value
+
+        # Determine which nodes to recalculate
+        for node in self.linked_nodes[key]:
+            node.parent.mark_to_recalculate()
 
     def get_variable(self, key):
         if key not in self.shared_variable_store:
