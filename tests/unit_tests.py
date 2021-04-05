@@ -1,5 +1,6 @@
 import unittest
-from aggregation_tree.core_objects import CalculatedTreeNode, FreeParameterTreeNode, SharedVariableTreeSpace
+from aggregation_tree.core_objects import CalculatedTreeNode, FreeParameterTreeNode, SharedVariableTreeSpace, \
+    SmartTreeSpace
 
 
 class TestTreeNodes(unittest.TestCase):
@@ -82,8 +83,16 @@ class TestSharedVariableTreeSpace(unittest.TestCase):
 
         self.assertEqual(top_node.value, 40.0)
 
-    def test_adding_shared_variable_appends_linked_nodes(self):
+    def adding_two_variables_same_name_throws(self):
         tree_space = SharedVariableTreeSpace()
+
+        tree_space.add_variable("x", 100)
+        self.assertRaises(KeyError, lambda: tree_space.add_variable("x", 20))
+
+
+class TestSmartTreeSpace(unittest.TestCase):
+    def test_adding_shared_variable_appends_linked_nodes(self):
+        tree_space = SmartTreeSpace()
 
         tree_space.add_variable("x", 100)
         seed = tree_space.add_seed_node("final_result", lambda l: sum(l))

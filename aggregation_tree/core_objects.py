@@ -44,7 +44,7 @@ class FreeParameterTreeNode(TreeNode):
             self.shared_variable_tree_space.update_variable(self.identifier, self._value)
 
             # If the value is a shared variable, add this node to the variable's linked_nodes
-            if isinstance(value, SharedVariable):
+            if isinstance(shared_variable_tree_space, SmartTreeSpace) and isinstance(value, SharedVariable):
                 self.shared_variable_tree_space.linked_nodes[value.name].append(self)
 
     @property
@@ -64,8 +64,9 @@ class CalculatedTreeNode(TreeNode):
 
     @property
     def value(self):
-        # If the value has not been calculated, we must calculate it first
-        if self.stored_value is None:
+        # If this lives in a SmartTreeSpace and the value has not been calculated, we must calculate it first
+        # If it doesn't live in a SmartTreeSpace, we calculate it anyway
+        if not isinstance(self.shared_variable_tree_space, SmartTreeSpace) or self.stored_value is None:
             self.stored_value = self.aggregation_function(self.get_children_values())
 
         return self.stored_value
@@ -74,6 +75,11 @@ class CalculatedTreeNode(TreeNode):
         return [child.value for child in self.children]
 
     def mark_to_recalculate(self):
+        """
+        Will only be called by the SmartTreeSpace, so no need to check for that.
+        :return:
+        :rtype:
+        """
         current_node = self
 
         while current_node is not None and current_node.stored_value is not None:
@@ -96,12 +102,15 @@ class SharedVariable:
 
 
 class SharedVariableTreeSpace:
-    __slots__ = ['tree_seeds', 'shared_variable_store', 'linked_nodes']
+    """
+    A space in which you can create trees that share variables in a common space. All shared variables must be created,
+    updated, and retrieved using add_variable(), update_variable(), and get_variable() respectively.
+    """
+    __slots__ = ['tree_seeds', 'shared_variable_store']
 
     def __init__(self):
         self.tree_seeds = {}
         self.shared_variable_store = {}
-        self.linked_nodes = {}
 
     def add_seed_node(self, name, aggregation_function):
         new_node = CalculatedTreeNode(name, aggregation_function, shared_variable_tree_space=self)
@@ -112,18 +121,36 @@ class SharedVariableTreeSpace:
         if key in self.shared_variable_store:
             raise KeyError(f"Key '{key}' already exists in the variable store.")
         self.shared_variable_store[key] = SharedVariable(key, value)
-        self.linked_nodes[key] = []
 
     def update_variable(self, key, value):
         if key not in self.shared_variable_store:
             raise KeyError(f"Key '{key}' does not exist in the variable store.")
         self.shared_variable_store[key].underlying_value = value
 
-        # Determine which nodes to recalculate
-        for node in self.linked_nodes[key]:
-            node.parent.mark_to_recalculate()
-
     def get_variable(self, key):
         if key not in self.shared_variable_store:
             raise KeyError(f"Key '{key}' does not exist in the variable store.")
         return self.shared_variable_store[key]
+
+
+class SmartTreeSpace(SharedVariableTreeSpace):
+    """
+    A tree space which is intended for efficient changing of shared variables. Whenever a shared variable is updated,
+    this space will determine which nodes need to be recalculated, and leaves the others with a stored value.
+    """
+    __slots__ = ['linked_nodes']
+
+    def __init__(self):
+        super().__init__()
+        self.linked_nodes = {}
+
+    def add_variable(self, key, value):
+        super().add_variable(key, value)
+        self.linked_nodes[key] = []
+
+    def update_variable(self, key, value):
+        super().update_variable(key, value)
+
+        # Determine which nodes to recalculate
+        for node in self.linked_nodes[key]:
+            node.parent.mark_to_recalculate()
