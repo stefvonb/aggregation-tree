@@ -1,27 +1,32 @@
+from concurrent.futures.thread import ThreadPoolExecutor
+
+
 class TreeNode:
     """
     A CalculatedTreeNode is essentially a tree object, since we branch off from this using the add_child() method.
     """
-    __slots__ = ['name', 'parent', 'children', '_value', 'shared_variable_tree_space']
+    __slots__ = ['name', 'parent', 'children', '_value', 'tree_space', 'is_threaded']
 
-    def __init__(self, name, parent=None, shared_variable_tree_space=None):
+    def __init__(self, name, parent=None, tree_space=None):
         self.name = name
         self.parent = parent
         self.children = []
         # When we add nodes in a SharedVariableTreeSpace, then they need a reference to that space's variables
-        self.shared_variable_tree_space = shared_variable_tree_space
+        self.tree_space = tree_space
 
-        if self.shared_variable_tree_space is not None:
-            self.shared_variable_tree_space.add_variable(self.identifier, None)
+        if isinstance(self.tree_space, SharedVariableTreeSpace):
+            self.tree_space.add_variable(self.identifier, None)
+
+        self.is_threaded = isinstance(self.tree_space, ThreadedSmartTreeSpace)
 
     def add_child(self, child_name, aggregation_function=None, value=None):
         if (aggregation_function is None and value is None) or (aggregation_function is not None and value is not None):
             raise ValueError("When adding a child node, either specify a value or an aggregation function. Adding a "
                              "value will make it a free parameter, and adding a function will make it calculated.")
         if aggregation_function is not None:
-            new_node = CalculatedTreeNode(child_name, aggregation_function, self, self.shared_variable_tree_space)
+            new_node = CalculatedTreeNode(child_name, aggregation_function, self, self.tree_space)
         else:
-            new_node = FreeParameterTreeNode(child_name, value, self, self.shared_variable_tree_space)
+            new_node = FreeParameterTreeNode(child_name, value, self, self.tree_space)
 
         self.children.append(new_node)
         return new_node
@@ -35,17 +40,17 @@ class TreeNode:
 
 
 class FreeParameterTreeNode(TreeNode):
-    def __init__(self, name, value, parent=None, shared_variable_tree_space=None):
-        super().__init__(name, parent, shared_variable_tree_space)
+    def __init__(self, name, value, parent=None, tree_space=None):
+        super().__init__(name, parent, tree_space)
         self._value = value
 
-        if self.shared_variable_tree_space is not None:
+        if self.tree_space is not None:
             # Free parameters should have a value, so we update the shared variable store here
-            self.shared_variable_tree_space.update_variable(self.identifier, self._value)
+            self.tree_space.update_variable(self.identifier, self._value)
 
             # If the value is a shared variable, add this node to the variable's linked_nodes
-            if isinstance(shared_variable_tree_space, SmartTreeSpace) and isinstance(value, SharedVariable):
-                self.shared_variable_tree_space.linked_nodes[value.name].append(self)
+            if isinstance(tree_space, SmartTreeSpace) and isinstance(value, SharedVariable):
+                self.tree_space.linked_nodes[value.name].append(self)
 
     @property
     def value(self):
@@ -57,8 +62,8 @@ class FreeParameterTreeNode(TreeNode):
 class CalculatedTreeNode(TreeNode):
     __slots__ = ['aggregation_function', 'stored_value']
 
-    def __init__(self, name, aggregation_function=None, parent=None, shared_variable_tree_space=None):
-        super().__init__(name, parent, shared_variable_tree_space)
+    def __init__(self, name, aggregation_function=None, parent=None, tree_space=None):
+        super().__init__(name, parent, tree_space)
         self.aggregation_function = aggregation_function
         self.stored_value = None
 
@@ -66,8 +71,12 @@ class CalculatedTreeNode(TreeNode):
     def value(self):
         # If this lives in a SmartTreeSpace and the value has not been calculated, we must calculate it first
         # If it doesn't live in a SmartTreeSpace, we calculate it anyway
-        if not isinstance(self.shared_variable_tree_space, SmartTreeSpace) or self.stored_value is None:
-            self.stored_value = self.aggregation_function(self.get_children_values())
+        if not isinstance(self.tree_space, SmartTreeSpace) or self.stored_value is None:
+            if self.is_threaded:
+                self.stored_value = self.tree_space.thread_pool_executor.submit(self.aggregation_function,
+                                                                                self.get_children_values())
+            else:
+                self.stored_value = self.aggregation_function(self.get_children_values())
 
         return self.stored_value
 
@@ -113,7 +122,7 @@ class SharedVariableTreeSpace:
         self.shared_variable_store = {}
 
     def add_seed_node(self, name, aggregation_function):
-        new_node = CalculatedTreeNode(name, aggregation_function, shared_variable_tree_space=self)
+        new_node = CalculatedTreeNode(name, aggregation_function, tree_space=self)
         self.tree_seeds[name] = new_node
         return new_node
 
@@ -154,3 +163,12 @@ class SmartTreeSpace(SharedVariableTreeSpace):
         # Determine which nodes to recalculate
         for node in self.linked_nodes[key]:
             node.parent.mark_to_recalculate()
+
+
+class ThreadedSmartTreeSpace(SmartTreeSpace):
+    __slots__ = ['thread_pool_executor']
+
+    def __init__(self, max_workers=None):
+        super().__init__()
+
+        self.thread_pool_executor = ThreadPoolExecutor(max_workers)
