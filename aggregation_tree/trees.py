@@ -59,6 +59,11 @@ class FreeParameterTreeNode(TreeNode):
         return self._value
 
     def get_value(self):
+        """
+        Had to add an additional method so that a thread pool executor could map it.
+        :return:
+        :rtype:
+        """
         return self.value
 
 
@@ -71,6 +76,11 @@ class CalculatedTreeNode(TreeNode):
         self.stored_value = None
 
     def get_value(self):
+        """
+        Had to add an additional method so that a thread pool executor could map it.
+        :return:
+        :rtype:
+        """
         return self.value
 
     @property
