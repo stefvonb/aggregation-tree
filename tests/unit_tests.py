@@ -82,6 +82,22 @@ class TestSharedVariableTreeSpace(unittest.TestCase):
 
         self.assertEqual(top_node.value, 40.0)
 
+    def test_adding_shared_variable_appends_linked_nodes(self):
+        tree_space = SharedVariableTreeSpace()
+
+        tree_space.add_variable("x", 100)
+        seed = tree_space.add_seed_node("final_result", lambda l: sum(l))
+        seed.add_child("x", value=tree_space.get_variable("x"))
+        child_node = seed.add_child("x_plus_20", aggregation_function=lambda l: sum(l))
+        child_node.add_child("constant", value=20)
+        child_node.add_child("x", value=tree_space.get_variable("x"))
+
+        self.assertEqual(seed.value, 220)
+        self.assertEqual(len(tree_space.linked_nodes["x"]), 2)
+
+        tree_space.update_variable("x", 120)
+        self.assertEqual(seed.value, 260)
+
 
 if __name__ == '__main__':
     unittest.main()

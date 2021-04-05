@@ -30,6 +30,9 @@ class TreeNode:
     def identifier(self):
         return f"node_value_{self.name}_{hex(id(self))}"
 
+    def __repr__(self):
+        return f"{type(self).__name__}: {self.name}"
+
 
 class FreeParameterTreeNode(TreeNode):
     def __init__(self, name, value, parent=None, shared_variable_tree_space=None):
@@ -40,15 +43,15 @@ class FreeParameterTreeNode(TreeNode):
             # Free parameters should have a value, so we update the shared variable store here
             self.shared_variable_tree_space.update_variable(self.identifier, self._value)
 
+            # If the value is a shared variable, add this node to the variable's linked_nodes
+            if isinstance(value, SharedVariable):
+                self.shared_variable_tree_space.linked_nodes[value.name].append(self)
+
     @property
     def value(self):
         if isinstance(self._value, SharedVariable):
             return self._value.underlying_value
         return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
 
 
 class CalculatedTreeNode(TreeNode):
@@ -70,13 +73,14 @@ class SharedVariable:
     """
     Since we can't refer to primitive types by reference, we wrap them here as shared variables.
     """
-    __slots__ = ['underlying_value']
+    __slots__ = ['name', 'underlying_value']
 
-    def __init__(self, value):
+    def __init__(self, name, value):
+        self.name = name
         self.underlying_value = value
 
     def __repr__(self):
-        return f"{self.underlying_value} <{hex(id(self))}>"
+        return f"{self.name}: {self.underlying_value} <{hex(id(self))}>"
 
 
 class SharedVariableTreeSpace:
@@ -95,7 +99,7 @@ class SharedVariableTreeSpace:
     def add_variable(self, key, value):
         if key in self.shared_variable_store:
             raise KeyError(f"Key '{key}' already exists in the variable store.")
-        self.shared_variable_store[key] = SharedVariable(value)
+        self.shared_variable_store[key] = SharedVariable(key, value)
         self.linked_nodes[key] = []
 
     def update_variable(self, key, value):
