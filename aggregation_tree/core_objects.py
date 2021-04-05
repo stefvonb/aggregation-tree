@@ -55,15 +55,20 @@ class FreeParameterTreeNode(TreeNode):
 
 
 class CalculatedTreeNode(TreeNode):
-    __slots__ = ['aggregation_function']
+    __slots__ = ['aggregation_function', 'stored_value']
 
     def __init__(self, name, aggregation_function=None, parent=None, shared_variable_tree_space=None):
         super().__init__(name, parent, shared_variable_tree_space)
         self.aggregation_function = aggregation_function
+        self.stored_value = None
 
     @property
     def value(self):
-        return self.aggregation_function(self.get_children_values())
+        # If the value has not been calculated, we must calculate it first
+        if self.stored_value is None:
+            self.stored_value = self.aggregation_function(self.get_children_values())
+
+        return self.stored_value
 
     def get_children_values(self):
         return [child.value for child in self.children]
