@@ -1,6 +1,6 @@
 import unittest, time
 from aggregation_tree.trees import CalculatedTreeNode, SharedVariableTreeSpace, \
-    SmartTreeSpace
+    SmartTreeSpace, ThreadedSmartTreeSpace
 
 
 def multiply_list(input_list):
@@ -136,6 +136,27 @@ class TestSmartTreeSpace(unittest.TestCase):
         second_value = top_node.value
         self.assertTrue(0.5 < time.time() - t0 < 1)
         self.assertEqual(second_value, 40)
+
+
+class TestThreadedSmartTreeSpace(unittest.TestCase):
+    def test_threaded_smart_tree_space_saves_time(self):
+        tree_space = ThreadedSmartTreeSpace()
+
+        top_node = tree_space.add_seed_node("result", lambda x: sum(x))
+        slow_node_1 = top_node.add_child("slow_node_1", half_second_add)
+        slow_node_2 = top_node.add_child("slow_node_2", half_second_add)
+
+        tree_space.add_variable("a", 20)
+        tree_space.add_variable("b", 30)
+
+        slow_node_1.add_child("a_node", value=tree_space.get_variable("a"))
+        slow_node_2.add_child("b_node", value=tree_space.get_variable("b"))
+
+        t0 = time.time()
+        first_value = top_node.value
+        print(time.time() - t0)
+        self.assertTrue(0.5 < time.time() - t0 < 1)
+        self.assertEqual(first_value, 50)
 
 
 if __name__ == '__main__':
