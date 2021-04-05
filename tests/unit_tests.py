@@ -1,5 +1,5 @@
 import unittest
-from aggregation_tree.core_objects import CalculatedTreeNode, FreeParameterTreeNode, SharedVariableTreeSpace, \
+from aggregation_tree.trees import CalculatedTreeNode, FreeParameterTreeNode, SharedVariableTreeSpace, \
     SmartTreeSpace
 
 
