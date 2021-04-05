@@ -58,6 +58,9 @@ class FreeParameterTreeNode(TreeNode):
             return self._value.underlying_value
         return self._value
 
+    def get_value(self):
+        return self.value
+
 
 class CalculatedTreeNode(TreeNode):
     __slots__ = ['aggregation_function', 'stored_value']
@@ -67,26 +70,29 @@ class CalculatedTreeNode(TreeNode):
         self.aggregation_function = aggregation_function
         self.stored_value = None
 
+    def get_value(self):
+        return self.value
+
     @property
     def value(self):
         # If this lives in a SmartTreeSpace and the value has not been calculated, we must calculate it first
         # If it doesn't live in a SmartTreeSpace, we calculate it anyway
         if not isinstance(self.tree_space, SmartTreeSpace) or self.stored_value is None:
-            if self.is_threaded:
-                future_value = self.tree_space.thread_pool_executor.submit(self.aggregation_function,
-                                                                           self.get_children_values())
-                self.tree_space.futures.append(future_value)
-            else:
-                self.stored_value = self.aggregation_function(self.get_children_values())
+            self.stored_value = self.aggregation_function(self.get_children_values())
 
         return self.stored_value
 
     def get_children_values(self):
+        if self.is_threaded:
+            executor = ThreadPoolExecutor(self.tree_space.max_thread_pool_workers, self.name)
+            futures = [executor.submit(child.get_value) for child in self.children]
+            return [future.result() for future in futures]
+
         return [child.value for child in self.children]
 
     def mark_to_recalculate(self):
         """
-        Will only be called by the SmartTreeSpace, so no need to check for that.
+        Will only be called by the SmartTreeSpace and inheritors, so no need to check for that.
         :return:
         :rtype:
         """
@@ -167,14 +173,8 @@ class SmartTreeSpace(SharedVariableTreeSpace):
 
 
 class ThreadedSmartTreeSpace(SmartTreeSpace):
-    __slots__ = ['thread_pool_executor', 'futures']
+    __slots__ = ['max_thread_pool_workers']
 
-    def __init__(self, max_workers=None):
+    def __init__(self, max_thread_pool_workers=None):
         super().__init__()
-
-        self.thread_pool_executor = ThreadPoolExecutor(max_workers)
-        self.futures = []
-
-    def execute_threads(self):
-        for i in range(len(self.futures) - 1, -1, -1):
-            self.futures[i].result()
+        self.max_thread_pool_workers = max_thread_pool_workers

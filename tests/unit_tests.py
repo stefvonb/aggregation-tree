@@ -154,7 +154,6 @@ class TestThreadedSmartTreeSpace(unittest.TestCase):
 
         t0 = time.perf_counter()
         first_value = top_node.value
-        tree_space.execute_threads()
         self.assertTrue(0.5 < time.perf_counter() - t0 < 1)
         self.assertEqual(first_value, 50)
 
